@@ -1,8 +1,8 @@
-/ Pines de los LEDs
-const int LED_RED = 11;
-const int LED_YELLOW = 12;
-const int LED_GREEN = 13;
-const int buttonPin = 2;
+// Pines de los LEDs
+const int LED_RED = 13;
+const int LED_YELLOW = 11;
+const int LED_GREEN = 12;
+const int buttonPin = 10;
 
 int buttonState = HIGH;
 int lastButtonState = HIGH;
@@ -12,6 +12,10 @@ int pressCount = 0;
 
 // Variables para intermitencia
 bool intermitenciaActiva = false;
+bool intermitenteRed = false;
+bool intermitenteYellow = false;
+bool intermitenteGreen = false;
+
 unsigned long previousMillis = 0;
 const long interval = 500;
 bool ledsOn = false;
@@ -39,10 +43,12 @@ void loop() {
       buttonState = reading;
 
       if (buttonState == LOW) { // Botón presionado
-        // Si había intermitencia, detenerla primero
         if (intermitenciaActiva) {
           intermitenciaActiva = false;
           apagarTodos();
+          intermitenteRed = false;
+          intermitenteYellow = false;
+          intermitenteGreen = false;
           Serial.println("Intermitencia detenida por pulsador.");
           mostrarMenu();
         }
@@ -57,7 +63,6 @@ void loop() {
   // --- Lectura menú consola ---
   if (Serial.available() > 0) {
     char opcion = Serial.read();
-    // Ignorar saltos de línea del monitor serie
     if (opcion != '\r' && opcion != '\n') {
       manejarMenuConsola(opcion);
     }
@@ -69,8 +74,11 @@ void loop() {
     if (currentMillis - previousMillis >= interval) {
       previousMillis = currentMillis;
       ledsOn = !ledsOn;
+
       if (ledsOn) {
-        encenderTodos();
+        if (intermitenteRed) digitalWrite(LED_RED, HIGH); else digitalWrite(LED_RED, LOW);
+        if (intermitenteGreen) digitalWrite(LED_GREEN, HIGH); else digitalWrite(LED_GREEN, LOW);
+        if (intermitenteYellow) digitalWrite(LED_YELLOW, HIGH); else digitalWrite(LED_YELLOW, LOW);
       } else {
         apagarTodos();
       }
@@ -80,7 +88,10 @@ void loop() {
 
 // Función para acciones del pulsador (1 a 6)
 void ejecutarAccionPulsador(int count) {
-  intermitenciaActiva = false; // cancelar intermitencia al usar pulsador
+  intermitenciaActiva = false;
+  intermitenteRed = false;
+  intermitenteYellow = false;
+  intermitenteGreen = false;
   apagarTodos();
 
   switch (count) {
@@ -104,8 +115,10 @@ void ejecutarAccionPulsador(int count) {
       Serial.println("Pulsador: Todos LEDs encendidos");
       break;
     case 6:
-      // Ahora sí hace un parpadeo del LED rojo
       intermitenciaActiva = true;
+      intermitenteRed = true;
+      intermitenteYellow = true;
+      intermitenteGreen = true;
       previousMillis = millis();
       ledsOn = false;
       Serial.println("Pulsador: Intermitencia solo LED ROJO");
@@ -115,27 +128,28 @@ void ejecutarAccionPulsador(int count) {
 
 // Función para manejar menú consola
 void manejarMenuConsola(char opcion) {
-  intermitenciaActiva = false; // al usar consola se detiene intermitencia
-
   switch (opcion) {
-    case '1': apagarTodos(); digitalWrite(LED_RED, HIGH);
+    case '1': apagarTodos(); intermitenteRed = false; digitalWrite(LED_RED, HIGH);
               Serial.println("LED ROJO encendido."); break;
-    case '2': digitalWrite(LED_RED, LOW);
+    case '2': digitalWrite(LED_RED, LOW); intermitenteRed = false;
               Serial.println("LED ROJO apagado."); break;
-    case '3': apagarTodos(); digitalWrite(LED_GREEN, HIGH);
+    case '3': apagarTodos(); intermitenteGreen = false; digitalWrite(LED_GREEN, HIGH);
               Serial.println("LED VERDE encendido."); break;
-    case '4': digitalWrite(LED_GREEN, LOW);
+    case '4': digitalWrite(LED_GREEN, LOW); intermitenteGreen = false;
               Serial.println("LED VERDE apagado."); break;
-    case '5': apagarTodos(); digitalWrite(LED_YELLOW, HIGH);
+    case '5': apagarTodos(); intermitenteYellow = false; digitalWrite(LED_YELLOW, HIGH);
               Serial.println("LED AMARILLO encendido."); break;
-    case '6': digitalWrite(LED_YELLOW, LOW);
+    case '6': digitalWrite(LED_YELLOW, LOW); intermitenteYellow = false;
               Serial.println("LED AMARILLO apagado."); break;
     case '7': encenderTodos();
+              intermitenteRed = false; intermitenteGreen = false; intermitenteYellow = false;
               Serial.println("Todos los LEDs encendidos."); break;
     case '8': apagarTodos();
+              intermitenteRed = false; intermitenteGreen = false; intermitenteYellow = false;
               Serial.println("Todos los LEDs apagados."); break;
     case '9': Serial.println("Intermitencia activada (todos los LEDs).");
               intermitenciaActiva = true;
+              intermitenteRed = true; intermitenteGreen = true; intermitenteYellow = true;
               previousMillis = millis();
               ledsOn = false;
               break;
